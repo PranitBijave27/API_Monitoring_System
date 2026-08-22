@@ -38,7 +38,111 @@ async function getApplicationById(id) {
     return result.rows[0];
 }
 
+//1st helper function of getApplicationOverview
+function calculateDependencyStatus(monitors) {
+    if (monitors.length === 0) {
+        return "UNKNOWN";
+    }
+
+    const statuses = monitors.map(
+        (monitor) => monitor.current_status
+    );
+
+    const hasUp = statuses.includes("UP");
+    const hasDown = statuses.includes("DOWN");
+
+    if (hasUp && hasDown) {
+        return "DEGRADED";
+    }
+
+    if (hasDown) {
+        return "DOWN";
+    }
+
+    if (hasUp) {
+        return "UP";
+    }
+
+    return "UNKNOWN";
+}
+//2nd helper function of getApplicationOverview
+function buildApplicationHierarchy(rows) {
+    const application = {
+        id: rows[0].application_id,
+        name: rows[0].application_name,
+        dependencies: []
+    };
+
+    const dependenciesMap = new Map();
+
+    for (const row of rows) {
+        if (!row.dependency_id) {
+            continue;
+        }
+
+        let dependency = dependenciesMap.get(
+            row.dependency_id
+        );
+
+        if (!dependency) {
+            dependency = {
+                id: row.dependency_id,
+                name: row.dependency_name,
+                monitors: []
+            };
+
+            dependenciesMap.set(
+                row.dependency_id,
+                dependency
+            );
+
+            application.dependencies.push(dependency);
+        }
+
+        if (row.monitor_id) {
+            dependency.monitors.push({
+                id: row.monitor_id,
+                name: row.monitor_name,
+                current_status: row.monitor_status,
+                last_checked_at: row.last_checked_at,
+                consecutive_failures: row.consecutive_failures
+            });
+        }
+    }
+
+    return application;
+}
+//3rd helper function of getApplicationOverview
+function calculateApplicationStatus(dependencies) {
+    if (dependencies.length === 0) {
+        return "UNKNOWN";
+    }
+
+    const dependencyStatuses = dependencies.map(
+        (dependency) => dependency.status
+    );
+
+    const hasUp = dependencyStatuses.includes("UP");
+    const hasDegraded = dependencyStatuses.includes("DEGRADED");
+    const hasDown = dependencyStatuses.includes("DOWN");
+
+    if (hasDown && !hasUp && !hasDegraded) {
+        return "DOWN";
+    }
+
+    if (hasDown || hasDegraded) {
+        return "DEGRADED";
+    }
+
+    if (hasUp) {
+        return "UP";
+    }
+
+    return "UNKNOWN";
+}
+
 async function getApplicationOverview(applicationId) {
+    // 1. Fetch rows
     const result = await pool.query(`
 		 SELECT
             a.id AS application_id,
@@ -66,81 +170,25 @@ async function getApplicationOverview(applicationId) {
         ORDER BY d.id, m.id
 		`, [applicationId]
     );
+    // 2. Return null if application doesn't exist
     if (result.rows.length === 0) return null;
 
-    const application = {
-        id: result.rows[0].application_id,
-        name: result.rows[0].application_name,
-        dependencies: []
-    };
-    const dependenciesMap = new Map();
-    for (const row of result.rows) {
-        if (!row.dependency_id) {
-            continue;
-        }
-        let dependency = dependenciesMap.get(row.dependency_id);
-        if (!dependency) {
-            dependency = {
-                id: row.dependency_id,
-                name: row.dependency_name,
-                monitors: []
-            };
-
-            dependenciesMap.set(row.dependency_id, dependency);
-
-            application.dependencies.push(dependency);
-        }
-        if (row.monitor_id) {
-            dependency.monitors.push({
-                id: row.monitor_id,
-                name: row.monitor_name,
-                current_status: row.monitor_status,
-                last_checked_at: row.last_checked_at,
-                consecutive_failures: row.consecutive_failures
-            });
-        }
-    }
-    for (const dependency of application.dependencies) {
-        const monitors = dependency.monitors;
-
-        if (monitors.length === 0) {
-            dependency.status = "UNKNOWN";
-            continue;
-        }
-
-        const statuses = monitors.map(
-            (monitor) => monitor.current_status);
-
-        const hasUp = statuses.includes("UP");
-        const hasDown = statuses.includes("DOWN");
-
-        if (hasUp && hasDown) dependency.status = "DEGRADED";
-        else if (hasDown) dependency.status = "DOWN";
-        else if (hasUp) dependency.status = "UP";
-        else dependency.status = "UNKNOWN";
-
-    }
-    const dependencyStatuses = application.dependencies.map(
-        (dependency) => dependency.status
+    // 3. Build hierarchy
+    const application = buildApplicationHierarchy(
+        result.rows
     );
+    // 4. Calculate dependency statuses
+    for (const dependency of application.dependencies) {
+        dependency.status = calculateDependencyStatus(
+            dependency.monitors
+        );
 
-    if (dependencyStatuses.length === 0) {
-        application.status = "UNKNOWN";
-    } else {
-        const hasUp = dependencyStatuses.includes("UP");
-        const hasDegraded = dependencyStatuses.includes("DEGRADED");
-        const hasDown = dependencyStatuses.includes("DOWN");
 
-        if (hasDown && !hasUp && !hasDegraded) {
-            application.status = "DOWN";
-        } else if (hasDown || hasDegraded) {
-            application.status = "DEGRADED";
-        } else if (hasUp) {
-            application.status = "UP";
-        } else {
-            application.status = "UNKNOWN";
-        }
     }
+
+    application.status = calculateApplicationStatus(
+        application.dependencies
+    );
     return application;
 }
 
