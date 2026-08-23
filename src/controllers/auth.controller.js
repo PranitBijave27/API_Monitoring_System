@@ -1,5 +1,6 @@
 const {
-    registerOrganization
+    registerOrganization,
+    loginUser
 } = require("../services/auth.service");
 
 
@@ -46,6 +47,41 @@ async function register(req, res) {
 
 }
 
+async function login(req, res) {
+    try {
+        const { email, password } = req.body;
+
+        if (!email || !password) {
+            return res.status(400).json({
+                message: "Email and password are required"
+            });
+        }
+
+        const result = await loginUser(
+            email,
+            password
+        );
+
+        res.status(200).json({
+            message: "Login successful",
+            data: result
+        });
+    } catch (error) {
+        console.error("Login error:", error);
+
+        if (error.message === "INVALID_CREDENTIALS") {
+            return res.status(401).json({
+                message: "Invalid email or password"
+            });
+        }
+
+        res.status(500).json({
+            message: "Failed to login"
+        });
+    }
+}
+
 module.exports = {
-    register
+    register,
+    login,
 };
