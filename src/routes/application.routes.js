@@ -10,16 +10,19 @@ const router = express.Router();
 
 router.post(
     "/",
+    authenticate,
     applicationController.createApplication
 );
 
 router.get(
     "/",
+    authenticate,
     applicationController.getApplications
 );
 
 router.get(
     "/:applicationId/overview",
+    authenticate,
     getApplicationOverviewController
 );
 

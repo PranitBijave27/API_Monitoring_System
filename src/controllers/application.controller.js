@@ -13,7 +13,8 @@ async function createApplication(req, res) {
         const application =
             await applicationService.createApplication(
                 name,
-                description
+                description,
+                req.user.organizationId
             );
 
         return res.status(201).json({
@@ -32,7 +33,7 @@ async function createApplication(req, res) {
 async function getApplications(req, res) {
     try {
         const applications =
-            await applicationService.getApplications();
+            await applicationService.getApplications(req.user.organizationId);
 
         return res.status(200).json({
             data: applications,
@@ -78,7 +79,11 @@ async function getApplicationOverviewController(req, res) {
     try {
         const { applicationId } = req.params;
 
-        const application = await applicationService.getApplicationOverview(applicationId);
+        const application = 
+            await applicationService.getApplicationOverview(
+                applicationId,
+                req.user.organizationId
+            );
 
         if (!application) {
             return res.status(404).json({

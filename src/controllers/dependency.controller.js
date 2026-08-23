@@ -11,7 +11,7 @@ async function createDependency(req, res) {
     try {
         const { applicationId } = req.params;
         const { name, type, provider } = req.body;
-         
+
         if (!name || !type) {
             return res.status(400).json({
                 message: "Name and type are required",
@@ -20,7 +20,8 @@ async function createDependency(req, res) {
 
         const application =
             await applicationService.getApplicationById(
-                applicationId
+                applicationId,
+                req.user.organizationId
             );
 
         if (!application) {
@@ -55,7 +56,8 @@ async function getDependencies(req, res) {
         const { applicationId } = req.params;
 
         const application = await applicationService.getApplicationById(
-            applicationId
+            applicationId,
+            req.user.organizationId
         );
 
         if (!application) {

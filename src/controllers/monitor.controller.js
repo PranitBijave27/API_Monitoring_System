@@ -54,7 +54,8 @@ async function createMonitor(req, res) {
         const { dependencyId } = req.params;
          
         const dependency = await dependencyService.getDependencyById(
-            dependencyId
+            dependencyId,
+            req.user.organizationId
         );
 
         if (!dependency) {
@@ -107,7 +108,8 @@ async function getMonitors(req, res) {
         const { dependencyId } = req.params;
 
         const dependency = await dependencyService.getDependencyById(
-            dependencyId
+            dependencyId,
+            req.user.organizationId
         );
 
         if (!dependency) {

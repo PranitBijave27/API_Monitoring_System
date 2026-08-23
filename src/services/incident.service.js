@@ -20,28 +20,35 @@ async function getIncidentsByMonitorId(monitorId) {
     return result.rows;
 }
 
-async function getIncidents(status) {
+async function getIncidents(status, organizationId) {
     let query = `
         SELECT
-            id,
-            monitor_id,
-            status,
-            started_at,
-            detected_at,
-            resolved_at,
-            failure_reason,
-            created_at
-        FROM incidents`;
+            i.id,
+            i.monitor_id,
+            i.status,
+            i.started_at,
+            i.detected_at,
+            i.resolved_at,
+            i.failure_reason,
+            i.created_at
+        FROM incidents i
+        JOIN monitors m
+            ON i.monitor_id = m.id
+        JOIN dependencies d
+            ON m.dependency_id = d.id
+        JOIN applications a
+            ON d.application_id = a.id
+        WHERE a.organization_id = $1`;
 
-    const values = [];
+    const values = [organizationId];
 
     if (status) {
-        query += ` WHERE status = $1`;
+        query += ` AND i.status = $2`;
 
         values.push(status);
     }
 
-    query += ` ORDER BY detected_at DESC`;
+    query += ` ORDER BY i.detected_at DESC`;
 
     const result = await pool.query(query, values);
 

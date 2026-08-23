@@ -50,6 +50,28 @@ async function getMonitorsByDependencyId(dependencyId) {
     return result.rows;
 }
 
+async function getMonitorById(
+    monitorId,
+    organizationId
+) {
+    const query = `
+        SELECT m.*
+        FROM monitors m
+        JOIN dependencies d
+            ON m.dependency_id = d.id
+        JOIN applications a
+            ON d.application_id = a.id
+        WHERE m.id = $1
+        AND a.organization_id = $2
+    `;
+
+    const result = await pool.query(
+        query,
+        [monitorId, organizationId]
+    );
+
+    return result.rows[0];
+}
 async function getDueMonitors() {
     const query = `
     SELECT *
@@ -72,5 +94,6 @@ async function getDueMonitors() {
 module.exports = {
     createMonitor,
     getMonitorsByDependencyId,
+    getMonitorById,
     getDueMonitors,
 };

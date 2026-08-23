@@ -37,14 +37,19 @@ async function getDependenciesByApplicationId(applicationId) {
     return result.rows;
 }
 
-async function getDependencyById(id) {
+async function getDependencyById(
+    dependencyId,
+    organizationId
+) {
     const query = `
-    SELECT *
-    FROM dependencies
-    WHERE id = $1
-  `;
+      SELECT d.*
+        FROM dependencies d
+        JOIN applications a
+            ON d.application_id = a.id
+        WHERE d.id = $1
+        AND a.organization_id = $2 `;
 
-    const result = await pool.query(query, [id]);
+    const result = await pool.query(query, [dependencyId, organizationId]);
 
     return result.rows[0];
 }

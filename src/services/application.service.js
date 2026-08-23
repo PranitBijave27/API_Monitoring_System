@@ -1,39 +1,40 @@
 const pool = require("../config/db");
 
-async function createApplication(name, description) {
+async function createApplication(name, description, organizationId) {
     const query = `
-    INSERT INTO applications (name, description)
-    VALUES ($1, $2)
+    INSERT INTO applications (name, description, organization_id)
+    VALUES ($1, $2, $3)
     RETURNING *
   `;
 
-    const values = [name, description];
+    const values = [name, description, organizationId];
 
     const result = await pool.query(query, values);
 
     return result.rows[0];
 }
 
-async function getApplications() {
+async function getApplications(organizationId) {
     const query = `
     SELECT *
     FROM applications
+    WHERE organization_id = $1
     ORDER BY created_at DESC
   `;
 
-    const result = await pool.query(query);
+    const result = await pool.query(query, [organizationId]);
 
     return result.rows;
 }
 
-async function getApplicationById(applicationId,organizationId) {
+async function getApplicationById(applicationId, organizationId) {
     const query = `
     SELECT *
     FROM applications
     WHERE id = $1
     AND organization_id = $2`;
 
-    const result = await pool.query(query, [applicationId,organizationId]);
+    const result = await pool.query(query, [applicationId, organizationId]);
 
     return result.rows[0];
 }
@@ -165,7 +166,7 @@ function buildApplicationSummary(dependencies) {
     return summary;
 }
 
-async function getApplicationOverview(applicationId) {
+async function getApplicationOverview(applicationId, organizationId) {
     // 1. Fetch rows
     const result = await pool.query(`
 		 SELECT
@@ -190,9 +191,10 @@ async function getApplicationOverview(applicationId) {
             ON m.dependency_id = d.id
 
         WHERE a.id = $1
+        AND a.organization_id = $2
 
         ORDER BY d.id, m.id
-		`, [applicationId]
+		`, [applicationId, organizationId]
     );
     // 2. Return null if application doesn't exist
     if (result.rows.length === 0) return null;
