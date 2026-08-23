@@ -135,3 +135,24 @@ CREATE TABLE organizations (
 
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE TABLE users (
+    id SERIAL PRIMARY KEY,
+
+    organization_id INTEGER NOT NULL,
+
+    name VARCHAR(255) NOT NULL,
+
+    email VARCHAR(255) NOT NULL UNIQUE,
+
+    password_hash VARCHAR(255) NOT NULL,
+
+    role VARCHAR(50) NOT NULL DEFAULT 'MEMBER',
+
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT users_organization_id_fkey
+        FOREIGN KEY (organization_id)
+        REFERENCES organizations(id)
+        ON DELETE CASCADE
+);
