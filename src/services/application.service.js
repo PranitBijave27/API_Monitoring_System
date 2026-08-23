@@ -140,6 +140,30 @@ function calculateApplicationStatus(dependencies) {
 
     return "UNKNOWN";
 }
+//4th helper function of getApplicationOverview
+function buildApplicationSummary(dependencies) {
+    const summary = {
+        total_dependencies: dependencies.length,
+        up: 0,
+        degraded: 0,
+        down: 0,
+        unknown: 0
+    };
+
+    for (const dependency of dependencies) {
+        if (dependency.status === "UP") {
+            summary.up++;
+        } else if (dependency.status === "DEGRADED") {
+            summary.degraded++;
+        } else if (dependency.status === "DOWN") {
+            summary.down++;
+        } else {
+            summary.unknown++;
+        }
+    }
+
+    return summary;
+}
 
 async function getApplicationOverview(applicationId) {
     // 1. Fetch rows
@@ -189,6 +213,10 @@ async function getApplicationOverview(applicationId) {
     application.status = calculateApplicationStatus(
         application.dependencies
     );
+    application.summary = buildApplicationSummary(
+        application.dependencies
+    );
+
     return application;
 }
 
