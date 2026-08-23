@@ -127,3 +127,11 @@ CREATE TABLE incidents (
     CONSTRAINT valid_incident_status
         CHECK (status IN ('OPEN', 'RESOLVED'))
 );
+
+CREATE TABLE organizations (
+    id SERIAL PRIMARY KEY,
+
+    name VARCHAR(255) NOT NULL UNIQUE,
+
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
