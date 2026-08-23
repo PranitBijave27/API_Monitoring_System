@@ -1,8 +1,8 @@
 const express = require("express");
 
+const { authenticate } = require("../middleware/auth.middleware");
 const applicationController =
     require("../controllers/application.controller");
-
 const { getApplicationOverviewController
 } = require("../controllers/application.controller");
 
@@ -25,6 +25,7 @@ router.get(
 
 router.get(
     "/:id",
+    authenticate,
     applicationController.getApplication
 );
 

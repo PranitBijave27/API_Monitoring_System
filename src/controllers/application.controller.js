@@ -49,8 +49,9 @@ async function getApplications(req, res) {
 async function getApplication(req, res) {
     try {
         const { id } = req.params;
+        const { organizationId } = req.user;
 
-        const application = await applicationService.getApplicationById(id);
+        const application = await applicationService.getApplicationById(id,organizationId);
 
         if (!application) {
             return res.status(404).json({

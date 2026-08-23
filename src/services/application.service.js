@@ -26,14 +26,14 @@ async function getApplications() {
     return result.rows;
 }
 
-async function getApplicationById(id) {
+async function getApplicationById(applicationId,organizationId) {
     const query = `
     SELECT *
     FROM applications
     WHERE id = $1
-  `;
+    AND organization_id = $2`;
 
-    const result = await pool.query(query, [id]);
+    const result = await pool.query(query, [applicationId,organizationId]);
 
     return result.rows[0];
 }
