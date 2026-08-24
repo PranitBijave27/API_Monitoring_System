@@ -143,8 +143,13 @@ async function saveHealthCheckResult(monitorId, result) {
 
 }
 
-async function getHealthChecksByMonitorId(monitorId) {
-    const query = `
+async function getHealthChecksByMonitorId(
+    monitorId,
+    limit,
+    offset,
+    status
+) {
+    let query = `
     SELECT
         id,
         monitor_id,
@@ -154,13 +159,29 @@ async function getHealthChecksByMonitorId(monitorId) {
         error_type,
         checked_at
     FROM health_checks
-    WHERE monitor_id = $1
-    ORDER BY checked_at DESC`;
+    WHERE monitor_id = $1`;
 
-    const result = await pool.query(query, [monitorId]);
+    const values = [monitorId];
+
+    if (status) {
+        query += ` AND status = $2`;
+        values.push(status);
+        query += ` ORDER BY checked_at DESC
+            LIMIT $3
+            OFFSET $4`;
+        values.push(limit, offset);
+    }else {
+        query += ` ORDER BY checked_at DESC
+            LIMIT $2
+            OFFSET $3`;
+        values.push(limit, offset);
+    }
+
+    const result = await pool.query(query, values);
 
     return result.rows;
 }
+
 module.exports = {
     saveHealthCheckResult,
     getHealthChecksByMonitorId,
