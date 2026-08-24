@@ -1,7 +1,12 @@
 const pool = require("../config/db");
 
-async function getIncidentsByMonitorId(monitorId) {
-    const result = await pool.query(`
+async function getIncidentsByMonitorId(
+    monitorId,
+    status,
+    limit,
+    offset
+) {
+    let query = `
         SELECT
             id,
             monitor_id,
@@ -12,15 +17,59 @@ async function getIncidentsByMonitorId(monitorId) {
             failure_reason,
             created_at
         FROM incidents
-        WHERE monitor_id = $1
-        ORDER BY detected_at DESC
-        `, [monitorId]
+        WHERE monitor_id = $1`;
+    const values = [monitorId];
+
+    if (status) {
+        query += ` AND status = $2`;
+        values.push(status);
+        query += ` ORDER BY detected_at DESC
+            LIMIT $3
+            OFFSET $4`;
+        values.push(limit, offset);
+    } else {
+        query += ` ORDER BY detected_at DESC
+            LIMIT $2
+            OFFSET $3`;
+        values.push(limit, offset);
+    }
+
+    const result = await pool.query(
+        query,
+        values
     );
 
-    return result.rows;
+    let countQuery = `
+        SELECT COUNT(*)
+        FROM incidents
+        WHERE monitor_id = $1`;
+
+    const countValues = [monitorId];
+
+    if (status) {
+        countQuery += ` AND status = $2`;
+        countValues.push(status);
+    }
+
+    const countResult = await pool.query(
+        countQuery,
+        countValues
+    );
+
+    return {
+        incidents: result.rows,
+        total: Number(countResult.rows[0].count),
+    };
+
 }
 
-async function getIncidents(status, organizationId) {
+async function getIncidents(
+    status,
+    organizationId,
+    limit,
+    offset
+
+) {
     let query = `
         SELECT
             i.id,
@@ -44,15 +93,51 @@ async function getIncidents(status, organizationId) {
 
     if (status) {
         query += ` AND i.status = $2`;
-
         values.push(status);
+        query += ` ORDER BY i.detected_at DESC
+            LIMIT $3
+            OFFSET $4`;
+        values.push(limit, offset);
+    } else {
+        query += ` ORDER BY i.detected_at DESC
+            LIMIT $2
+            OFFSET $3`;
+
+        values.push(limit, offset);
     }
 
-    query += ` ORDER BY i.detected_at DESC`;
+    const result = await pool.query(
+        query,
+        values
+    );
 
-    const result = await pool.query(query, values);
+    let countQuery = `
+        SELECT COUNT(*)
+        FROM incidents i
+        JOIN monitors m
+            ON i.monitor_id = m.id
+        JOIN dependencies d
+            ON m.dependency_id = d.id
+        JOIN applications a
+            ON d.application_id = a.id
+        WHERE a.organization_id = $1`;
 
-    return result.rows;
+    const countValues = [organizationId];
+
+    if (status) {
+        countQuery += ` AND i.status = $2`;
+        countValues.push(status);
+    }
+
+    const countResult = await pool.query(
+        countQuery,
+        countValues
+    );
+
+    return {
+        incidents: result.rows,
+        total: Number(countResult.rows[0].count),
+    };
 }
 
 module.exports = {
