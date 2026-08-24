@@ -1,21 +1,16 @@
-const applicationService = require(
-    "../services/application.service"
-);
-
-const dependencyService = require(
-    "../services/dependency.service"
-);
+const applicationService = require("../services/application.service");
+const dependencyService = require("../services/dependency.service");
+const asyncHandler = require("../utils/async-handler");
+const AppError = require("../utils/app-error");
 
 
-async function createDependency(req, res) {
-    try {
+const createDependency = asyncHandler(
+    async (req, res) => {
         const { applicationId } = req.params;
         const { name, type, provider } = req.body;
 
         if (!name || !type) {
-            return res.status(400).json({
-                message: "Name and type are required",
-            });
+            throw new AppError("Name and type are required", 400);
         }
 
         const application =
@@ -25,9 +20,7 @@ async function createDependency(req, res) {
             );
 
         if (!application) {
-            return res.status(404).json({
-                message: "Application not found",
-            });
+            throw new AppError("Application not found", 404);
         }
 
         const dependency =
@@ -42,17 +35,11 @@ async function createDependency(req, res) {
             message: "Dependency created successfully",
             data: dependency,
         });
-    } catch (error) {
-        console.error("Create dependency error:", error);
-
-        return res.status(500).json({
-            message: "Internal server error",
-        });
     }
-}
+);
 
-async function getDependencies(req, res) {
-    try {
+const getDependencies = asyncHandler(
+    async (req, res) => {
         const { applicationId } = req.params;
 
         const application = await applicationService.getApplicationById(
@@ -61,9 +48,7 @@ async function getDependencies(req, res) {
         );
 
         if (!application) {
-            return res.status(404).json({
-                message: "Application not found",
-            });
+            throw new AppError("Application not found", 404);
         }
 
         const dependencies = await dependencyService.getDependenciesByApplicationId(
@@ -73,14 +58,9 @@ async function getDependencies(req, res) {
         return res.status(200).json({
             data: dependencies,
         });
-    } catch (error) {
-        console.error("Get dependencies error:", error);
 
-        return res.status(500).json({
-            message: "Internal server error",
-        });
     }
-}
+);
 
 module.exports = {
     createDependency,

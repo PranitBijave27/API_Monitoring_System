@@ -1,15 +1,14 @@
-const userService = require(
-    "../services/user.service"
-);
+const userService = require("../services/user.service");
+const asyncHandler = require("../utils/async-handler");
+const AppError = require("../utils/app-error");
 
-async function createMember(req, res) {
-    try {
+
+const createMember = asyncHandler(
+    async (req, res) => {
         const { name, email, password } = req.body;
 
         if (!name || !email || !password) {
-            return res.status(400).json({
-                message: "Name, email and password are required"
-            });
+            throw new AppError("Name, email and password are required", 400);
         }
 
         const user = await userService.createMember(
@@ -23,22 +22,8 @@ async function createMember(req, res) {
             message: "Member created successfully",
             data: user
         });
-    } catch (error) {
-        console.error("Create member error:", error);
-
-        if (error.code === "23505" &&
-            error.constraint === "users_email_key"
-        ) {
-            return res.status(409).json({
-                message: "Email already exists"
-            });
-        }
-
-        return res.status(500).json({
-            message: "Internal server error"
-        });
     }
-}
+);
 
 module.exports = {
     createMember

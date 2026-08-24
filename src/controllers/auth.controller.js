@@ -1,11 +1,11 @@
-const {
-    registerOrganization,
-    loginUser
-} = require("../services/auth.service");
+const { registerOrganization, loginUser } = require("../services/auth.service");
+const asyncHandler = require("../utils/async-handler");
+const AppError = require("../utils/app-error");
 
 
-async function register(req, res) {
-    try {
+const register = asyncHandler(
+    async (req, res) => {
+
         const {
             organizationName,
             name,
@@ -23,38 +23,16 @@ async function register(req, res) {
             message: "Organization registered successfully",
             data: result
         });
-    } catch (error) {
-        console.error("Registration error:", error);
-
-        if (error.code === "23505") {
-            if (error.constraint === "organizations_name_key") {
-                return res.status(409).json({
-                    message: "Organization name already exists"
-                });
-            }
-
-            if (error.constraint === "users_email_key") {
-                return res.status(409).json({
-                    message: "Email already exists"
-                });
-            }
-        }
-
-        res.status(500).json({
-            message: "Failed to register organization"
-        });
     }
+);
 
-}
+const login = asyncHandler(
+    async (req, res) => {
 
-async function login(req, res) {
-    try {
         const { email, password } = req.body;
 
         if (!email || !password) {
-            return res.status(400).json({
-                message: "Email and password are required"
-            });
+            throw new AppError("Email and password are required", 400);
         }
 
         const result = await loginUser(
@@ -66,20 +44,8 @@ async function login(req, res) {
             message: "Login successful",
             data: result
         });
-    } catch (error) {
-        console.error("Login error:", error);
-
-        if (error.message === "INVALID_CREDENTIALS") {
-            return res.status(401).json({
-                message: "Invalid email or password"
-            });
-        }
-
-        res.status(500).json({
-            message: "Failed to login"
-        });
     }
-}
+);
 
 module.exports = {
     register,

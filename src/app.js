@@ -6,6 +6,7 @@ const healthCheckRoutes =require("./routes/health-check.routes");
 const incidentRoutes = require("./routes/incident.routes");
 const authRoutes = require("./routes/auth.routes");
 const userRoutes = require("./routes/user.routes");
+const errorHandler=require("./middleware/error.middleware");
 const app = express();
 
 app.use(express.json());
@@ -24,5 +25,7 @@ app.use("/api/dependencies/:dependencyId/monitors", monitorRoutes);
 app.use("/api", healthCheckRoutes);
 app.use("/api", incidentRoutes);
 
+//Centralized error handler
+app.use(errorHandler);
 
 module.exports = app;

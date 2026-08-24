@@ -1,10 +1,7 @@
-const dependencyService = require(
-    "../services/dependency.service"
-);
-
-const monitorService = require(
-    "../services/monitor.service"
-);
+const dependencyService = require("../services/dependency.service");
+const monitorService = require("../services/monitor.service");
+const asyncHandler = require("../utils/async-handler");
+const AppError = require("../utils/app-error");
 
 const ALLOWED_METHODS = [
     "GET",
@@ -49,29 +46,22 @@ function validateMonitor(data) {
     return null;
 }
 
-async function createMonitor(req, res) {
-    try {
+const createMonitor = asyncHandler(
+    async (req, res) => {
         const { dependencyId } = req.params;
-         
+
+        const validationError = validateMonitor(req.body);
+        if (validationError) {
+            throw new AppError(validationError, 400);
+        }
+
         const dependency = await dependencyService.getDependencyById(
             dependencyId,
             req.user.organizationId
         );
-
         if (!dependency) {
-            return res.status(404).json({
-                message: "Dependency not found",
-            });
+            throw new AppError("Dependency not found", 404);
         }
-
-        const validationError = validateMonitor(req.body);
-
-        if (validationError) {
-            return res.status(400).json({
-                message: validationError,
-            });
-        }
-         
 
         const payload = {
             name: req.body.name,
@@ -94,17 +84,11 @@ async function createMonitor(req, res) {
             message: "Monitor created successfully",
             data: monitor,
         });
-    } catch (error) {
-        console.error("Create monitor error:", error);
-
-        return res.status(500).json({
-            message: "Internal server error",
-        });
     }
-}
+);
 
-async function getMonitors(req, res) {
-    try {
+const getMonitors = asyncHandler(
+    async (req, res) => {
         const { dependencyId } = req.params;
 
         const dependency = await dependencyService.getDependencyById(
@@ -113,9 +97,7 @@ async function getMonitors(req, res) {
         );
 
         if (!dependency) {
-            return res.status(404).json({
-                message: "Dependency not found",
-            });
+            throw new AppError("Dependency not found", 404);
         }
 
         const monitors = await monitorService.getMonitorsByDependencyId(
@@ -125,14 +107,8 @@ async function getMonitors(req, res) {
         return res.status(200).json({
             data: monitors,
         });
-    } catch (error) {
-        console.error("Get monitors error:", error);
-
-        return res.status(500).json({
-            message: "Internal server error",
-        });
     }
-}
+);
 
 module.exports = {
     createMonitor,

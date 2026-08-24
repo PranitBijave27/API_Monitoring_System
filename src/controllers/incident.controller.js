@@ -1,13 +1,11 @@
-const {
-    getIncidentsByMonitorId,
-    getIncidents
-} = require("../services/incident.service");
-const {
-    getMonitorById,
-} = require("../services/monitor.service");
+const { getIncidentsByMonitorId, getIncidents } = require("../services/incident.service");
+const { getMonitorById, } = require("../services/monitor.service");
+const asyncHandler = require("../utils/async-handler");
+const AppError = require("../utils/app-error");
 
-async function getIncidentHistory(req, res) {
-    try {
+
+const getIncidentHistory = asyncHandler(
+    async (req, res) => {
         const { monitorId } = req.params;
         const {
             status,
@@ -19,20 +17,15 @@ async function getIncidentHistory(req, res) {
         const limitNumber = Number(limit);
 
         if (!Number.isInteger(pageNumber) || pageNumber < 1) {
-            return res.status(400).json({
-                message: "Page must be a positive integer",
-            });
+            throw new AppError("Page must be a positive integer", 400);
         }
 
         if (!Number.isInteger(limitNumber) || limitNumber < 1 || limitNumber > 100) {
-            return res.status(400).json({
-                message: "Limit must be an integer between 1 and 100",
-            });
+            throw new AppError("Limit must be an integer between 1 and 100", 400);
+
         }
         if (status && !["OPEN", "RESOLVED"].includes(status)) {
-            return res.status(400).json({
-                message: "Invalid incident status",
-            });
+            throw new AppError("Invalid incident status", 400);
         }
         const offset = (pageNumber - 1) * limitNumber;
 
@@ -41,9 +34,7 @@ async function getIncidentHistory(req, res) {
             req.user.organizationId
         );
         if (!monitor) {
-            return res.status(404).json({
-                message: "Monitor not found"
-            });
+            throw new AppError("Monitor not found", 404);
         }
 
         const result = await getIncidentsByMonitorId(
@@ -63,18 +54,11 @@ async function getIncidentHistory(req, res) {
                 totalPages,
             },
         });
-
-    } catch (error) {
-        console.error("Error fetching incident history:", error);
-
-        res.status(500).json({
-            message: "Failed to fetch incident history"
-        });
     }
-}
+);
 
-async function getAllIncidents(req, res) {
-    try {
+const getAllIncidents = asyncHandler(
+    async (req, res) => {
         const {
             status,
             page = "1",
@@ -85,24 +69,17 @@ async function getAllIncidents(req, res) {
         const limitNumber = Number(limit);
 
         if (!Number.isInteger(pageNumber) || pageNumber < 1) {
-            return res.status(400).json({
-                message: "Page must be a positive integer",
-            });
+            throw new AppError("Page must be a positive integer", 400);
         }
 
         if (!Number.isInteger(limitNumber) || limitNumber < 1 || limitNumber > 100) {
-            return res.status(400).json({
-                message:
-                    "Limit must be an integer between 1 and 100",
-            });
+            throw new AppError("Limit must be an integer between 1 and 100", 400);
         }
 
         if (status &&
             !["OPEN", "RESOLVED"].includes(status)
         ) {
-            return res.status(400).json({
-                message: "Invalid incident status"
-            });
+            throw new AppError("Invalid incident status", 400);
         }
         const offset = (pageNumber - 1) * limitNumber;
 
@@ -124,16 +101,8 @@ async function getAllIncidents(req, res) {
                 totalPages,
             },
         });
-
-    } catch (error) {
-        console.error("Error fetching incidents:", error);
-
-        res.status(500).json({
-            message: "Failed to fetch incidents"
-        });
     }
-}
-
+);
 module.exports = {
     getIncidentHistory,
     getAllIncidents

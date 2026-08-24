@@ -1,13 +1,14 @@
 const applicationService = require("../services/application.service");
+const asyncHandler = require("../utils/async-handler");
+const AppError = require("../utils/app-error");
 
-async function createApplication(req, res) {
-    try {
+
+const createApplication = asyncHandler(
+    async (req, res) => {
         const { name, description } = req.body;
 
         if (!name) {
-            return res.status(400).json({
-                message: "Application name is required",
-            });
+            throw new AppError("Application name is required", 400);
         }
 
         const application =
@@ -21,87 +22,59 @@ async function createApplication(req, res) {
             message: "Application created successfully",
             data: application,
         });
-    } catch (error) {
-        console.error("Create application error:", error);
-
-        return res.status(500).json({
-            message: "Internal server error",
-        });
     }
-}
+);
 
-async function getApplications(req, res) {
-    try {
+const getApplications = asyncHandler(
+    async (req, res) => {
         const applications =
-            await applicationService.getApplications(req.user.organizationId);
+            await applicationService.getApplications(
+                req.user.organizationId
+            );
 
         return res.status(200).json({
             data: applications,
         });
-    } catch (error) {
-        console.error("Get applications error:", error);
 
-        return res.status(500).json({
-            message: "Internal server error",
-        });
-    }
-}
+    });
 
-async function getApplication(req, res) {
-    try {
+const getApplication = asyncHandler(
+    async (req, res) => {
         const { id } = req.params;
         const { organizationId } = req.user;
 
-        const application = await applicationService.getApplicationById(id,organizationId);
+        const application = await applicationService.getApplicationById(id, organizationId);
 
         if (!application) {
-            return res.status(404).json({
-                message: "Application not found",
-            });
+            throw new AppError("Application not found", 404);
         }
 
-        res.status(200).json({
+        return res.status(200).json({
             application,
         });
-    } catch (error) {
-        console.error(
-            "Failed to fetch application:",
-            error.message
-        );
-
-        res.status(500).json({
-            message: "Failed to fetch application",
-        });
     }
-}
+);
 
-async function getApplicationOverviewController(req, res) {
-    try {
+const getApplicationOverviewController = asyncHandler(
+    async (req, res) => {
         const { applicationId } = req.params;
 
-        const application = 
+        const application =
             await applicationService.getApplicationOverview(
                 applicationId,
                 req.user.organizationId
             );
 
         if (!application) {
-            return res.status(404).json({
-                message: "Application not found"
-            });
+            throw new AppError("Application not found", 404);
+
         }
 
-        res.status(200).json({
+        return res.status(200).json({
             application
         });
-    } catch (error) {
-        console.error("Error fetching application overview:", error);
-
-        res.status(500).json({
-            message: "Failed to fetch application overview"
-        });
     }
-}
+);
 
 module.exports = {
     createApplication,
