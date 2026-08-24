@@ -2,11 +2,11 @@ const express = require("express");
 const applicationRoutes = require("./routes/application.routes");
 const dependencyRoutes = require("./routes/dependency.routes");
 const monitorRoutes = require("./routes/monitor.routes");
-const healthCheckRoutes =require("./routes/health-check.routes");
+const healthCheckRoutes = require("./routes/health-check.routes");
 const incidentRoutes = require("./routes/incident.routes");
 const authRoutes = require("./routes/auth.routes");
 const userRoutes = require("./routes/user.routes");
-const errorHandler=require("./middleware/error.middleware");
+const { errorHandler } = require("./middleware/error.middleware");
 const app = express();
 
 app.use(express.json());
