@@ -170,7 +170,7 @@ async function getHealthChecksByMonitorId(
             LIMIT $3
             OFFSET $4`;
         values.push(limit, offset);
-    }else {
+    } else {
         query += ` ORDER BY checked_at DESC
             LIMIT $2
             OFFSET $3`;
@@ -179,7 +179,26 @@ async function getHealthChecksByMonitorId(
 
     const result = await pool.query(query, values);
 
-    return result.rows;
+    let countQuery = `
+        SELECT COUNT(*)
+        FROM health_checks
+        WHERE monitor_id = $1`;
+    const countValues = [monitorId];
+
+    if (status) {
+        countQuery += ` AND status = $2`;
+        countValues.push(status);
+    }
+
+    const countResult = await pool.query(
+        countQuery,
+        countValues
+    );
+
+    return {
+        healthChecks: result.rows,
+        total: Number(countResult.rows[0].count),
+    };
 }
 
 module.exports = {

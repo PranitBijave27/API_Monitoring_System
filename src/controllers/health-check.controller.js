@@ -46,17 +46,25 @@ async function getHealthCheckHistory(req, res) {
             });
         }
 
-        const healthChecks =
+        const result =
             await getHealthChecksByMonitorId(
                 monitorId,
                 limitNumber,
                 offset,
                 status
             );
+        const totalPages = Math.ceil(result.total / limitNumber);
 
         res.status(200).json({
-            healthChecks,
+            data: result.healthChecks,
+            pagination: {
+                page: pageNumber,
+                limit: limitNumber,
+                total: result.total,
+                totalPages,
+            },
         });
+        
     } catch (error) {
         console.error("Failed to fetch health check history:",
             error.message);
