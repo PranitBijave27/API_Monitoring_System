@@ -3,15 +3,14 @@ const express = require("express");
 const monitorController = require(
     "../controllers/monitor.controller"
 );
-const {
-    authenticate,
-} = require("../middleware/auth.middleware");
+const { authenticate, authorize } = require("../middleware/auth.middleware");
 
 const router = express.Router({ mergeParams: true });
 
 router.post(
     "/",
     authenticate,
+    authorize("ADMIN"),
     monitorController.createMonitor
 );
 

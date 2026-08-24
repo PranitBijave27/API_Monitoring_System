@@ -1,16 +1,15 @@
 const express = require("express");
 
-const { authenticate } = require("../middleware/auth.middleware");
-const applicationController =
-    require("../controllers/application.controller");
-const { getApplicationOverviewController
-} = require("../controllers/application.controller");
+const { authenticate, authorize } = require("../middleware/auth.middleware");
+const applicationController = require("../controllers/application.controller");
+const { getApplicationOverviewController } = require("../controllers/application.controller");
 
 const router = express.Router();
 
 router.post(
     "/",
     authenticate,
+    authorize("ADMIN"),
     applicationController.createApplication
 );
 
