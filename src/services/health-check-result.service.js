@@ -1,4 +1,8 @@
 const pool = require("../config/db");
+const { 
+    sendDependencyDownAlert,
+    sendDependencyRecoveredAlert
+} = require("../services/email.service");
 const INCIDENT_THRESHOLD = 3;
 
 async function saveHealthCheckResult(monitorId, result) {
@@ -7,6 +11,8 @@ async function saveHealthCheckResult(monitorId, result) {
     try {
         await client.query("BEGIN");
         const checkedAt = new Date();
+        let createdIncident = null;
+        let resolvedIncident = null;
 
         const insertHealthCheckQuery = `
             INSERT INTO health_checks (
@@ -98,12 +104,15 @@ async function saveHealthCheckResult(monitorId, result) {
             );
 
             if (resolvedIncidentResult.rowCount > 0) {
+                resolvedIncident =
+                    resolvedIncidentResult.rows[0];
+
+
                 console.log(
                     `Incident resolved for monitor ${monitorId}`
                 );
             }
         }
-
 
         const thresholdJustReached =
             result.status === "DOWN" &&
@@ -111,20 +120,24 @@ async function saveHealthCheckResult(monitorId, result) {
             consecutiveFailures >= INCIDENT_THRESHOLD;
 
         if (thresholdJustReached) {
-            await client.query(`
+            const createdIncidentResult = await client.query(`
                 INSERT INTO incidents (
                     monitor_id,
                     status,
                     started_at,
                     detected_at,
                     failure_reason)
-                    VALUES ($1, 'OPEN', $2, $3, $4)`, [
+                    VALUES ($1, 'OPEN', $2, $3, $4)
+                    RETURNING *
+                `, [
                 monitorId,
                 failureStartedAt,
                 checkedAt,
                 result.errorType,
             ]
             );
+            createdIncident =
+                createdIncidentResult.rows[0];
 
             console.log(
                 `Incident created for monitor ${monitorId}`
@@ -132,6 +145,22 @@ async function saveHealthCheckResult(monitorId, result) {
         }
 
         await client.query("COMMIT");
+        if (createdIncident) {
+            await sendDependencyDownAlert({
+                to: "test@example.com",
+                monitorId,
+                failureReason:
+                    createdIncident.failure_reason,
+            });
+        }
+
+        if (resolvedIncident) {
+            await sendDependencyRecoveredAlert({
+                to: "test@example.com",
+                monitorId,
+            });
+        }
+
         return healthCheckResult.rows[0];
 
     } catch (error) {
