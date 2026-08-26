@@ -17,60 +17,91 @@ async function sendEmail({
             text,
             html,
         });
+        const url=nodemailer.getTestMessageUrl(info);
+        console.log(url);
     return info;
 }
 
 async function sendDependencyDownAlert({
     to,
-    monitorId,
+    applicationName,
+    dependencyName,
+    monitorName,
+    monitorUrl,
     failureReason,
+    detectedAt,
 }) {
     return sendEmail({
         to,
-        subject: "Dependency is DOWN",
-
+        subject: `🚨 Dependency DOWN: ${dependencyName}`,
         text: `
-            Dependency is DOWN.
+        Dependency is DOWN
+        Application: ${applicationName}
+        Dependency: ${dependencyName}
+        Monitor: ${monitorName}
+        URL: ${monitorUrl}
+        Failure reason: ${failureReason || "Unknown"}
+        Detected at: ${detectedAt}`,
 
-            Monitor ID: ${monitorId}
-            Failure reason: ${failureReason}
-        `,
         html: `
-            <h2>Dependency is DOWN </h2>
-            <p>
-                <strong>Monitor ID:</strong>
-                ${monitorId}
-            </p>
+            <h2>🚨 Dependency is DOWN</h2>
+            <p><strong>Application:</strong> ${applicationName}</p>
+            <p><strong>Dependency:</strong> ${dependencyName}</p>
+            <p><strong>Monitor:</strong> ${monitorName}</p>
+            <p><strong>URL:</strong> ${monitorUrl}</p>
             <p>
                 <strong>Failure reason:</strong>
                 ${failureReason || "Unknown"}
             </p>
-        `,
+            <p><strong>Detected at:</strong> ${detectedAt}</p>`,
     });
 }
 
 async function sendDependencyRecoveredAlert({
     to,
-    monitorId,
+    applicationName,
+    dependencyName,
+    monitorName,
+    monitorUrl,
+    startedAt,
+    resolvedAt,
 }) {
+    const startTime = new Date(startedAt);
+    const endTime = new Date(resolvedAt);
+
+    const durationInSeconds = Math.floor(
+        (endTime - startTime) / 1000
+    );
+    const minutes = Math.floor(
+        durationInSeconds / 60
+    );
+    const seconds = durationInSeconds % 60;
+    const duration =
+        `${minutes} minutes ${seconds} seconds`;
     return sendEmail({
         to,
-        subject: "Dependency is RESOLVED",
-
+        subject: `✅ Dependency Recovered: ${dependencyName}`,
         text: `
-            Dependency has recovered.
-
-            Monitor ID: ${monitorId}
-        `,
+            Dependency has recovered
+            Application: ${applicationName}
+            Dependency: ${dependencyName}
+            Monitor: ${monitorName}
+            URL: ${monitorUrl}
+            Incident started: ${startedAt}
+            Recovered at: ${resolvedAt}
+            Incident duration: ${duration}`,
 
         html: `
-            <h2>Dependency is BACK UP </h2>
+            <h2>✅ Dependency has recovered</h2>
+            <p><strong>Application:</strong> ${applicationName}</p>
+            <p><strong>Dependency:</strong> ${dependencyName}</p>
+            <p><strong>Monitor:</strong> ${monitorName}</p>
+            <p><strong>URL:</strong> ${monitorUrl}</p>
+            <p><strong>Incident started:</strong> ${startedAt}</p>
+            <p><strong>Recovered at:</strong> ${resolvedAt}</p>
             <p>
-                <strong>Monitor ID:</strong>
-                ${monitorId}
-            </p>
-            <p>
-                The dependency is responding successfully again.
+                <strong>Incident duration:</strong>
+                ${duration}
             </p>
         `,
     });

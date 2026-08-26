@@ -1,8 +1,15 @@
 const pool = require("../config/db");
-const { 
+
+const {
+    getAlertDetailsByMonitorId,
+    getAlertRecipientsByMonitorId,
+} = require("../services/alert.service");
+
+const {
     sendDependencyDownAlert,
     sendDependencyRecoveredAlert
 } = require("../services/email.service");
+
 const INCIDENT_THRESHOLD = 3;
 
 async function saveHealthCheckResult(monitorId, result) {
@@ -145,20 +152,49 @@ async function saveHealthCheckResult(monitorId, result) {
         }
 
         await client.query("COMMIT");
-        if (createdIncident) {
-            await sendDependencyDownAlert({
-                to: "test@example.com",
-                monitorId,
-                failureReason:
-                    createdIncident.failure_reason,
-            });
-        }
 
-        if (resolvedIncident) {
-            await sendDependencyRecoveredAlert({
-                to: "test@example.com",
-                monitorId,
-            });
+        if (createdIncident || resolvedIncident) {
+            const alertDetails =
+                await getAlertDetailsByMonitorId(monitorId);
+
+            const recipients =
+                await getAlertRecipientsByMonitorId(monitorId);
+
+            if (createdIncident) {
+                await sendDependencyDownAlert({
+                    to: recipients,
+                    applicationName:
+                        alertDetails.application_name,
+                    dependencyName:
+                        alertDetails.dependency_name,
+                    monitorName:
+                        alertDetails.monitor_name,
+                    monitorUrl:
+                        alertDetails.monitor_url,
+                    failureReason:
+                        createdIncident.failure_reason,
+                    detectedAt:
+                        createdIncident.detected_at,
+                });
+            }
+
+            if (resolvedIncident) {
+                await sendDependencyRecoveredAlert({
+                    to: recipients,
+                    applicationName:
+                        alertDetails.application_name,
+                    dependencyName:
+                        alertDetails.dependency_name,
+                    monitorName:
+                        alertDetails.monitor_name,
+                    monitorUrl:
+                        alertDetails.monitor_url,
+                    startedAt:
+                        resolvedIncident.started_at,
+                    resolvedAt:
+                        resolvedIncident.resolved_at,
+                });
+            }
         }
 
         return healthCheckResult.rows[0];
