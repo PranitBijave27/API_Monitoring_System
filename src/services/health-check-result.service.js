@@ -153,50 +153,58 @@ async function saveHealthCheckResult(monitorId, result) {
 
         await client.query("COMMIT");
 
-        if (createdIncident || resolvedIncident) {
-            const alertDetails =
-                await getAlertDetailsByMonitorId(monitorId);
 
-            const recipients =
-                await getAlertRecipientsByMonitorId(monitorId);
+        try {
+            if (createdIncident || resolvedIncident) {
+                const alertDetails =
+                    await getAlertDetailsByMonitorId(monitorId);
 
-            if (createdIncident) {
-                await sendDependencyDownAlert({
-                    to: recipients,
-                    applicationName:
-                        alertDetails.application_name,
-                    dependencyName:
-                        alertDetails.dependency_name,
-                    monitorName:
-                        alertDetails.monitor_name,
-                    monitorUrl:
-                        alertDetails.monitor_url,
-                    failureReason:
-                        createdIncident.failure_reason,
-                    detectedAt:
-                        createdIncident.detected_at,
-                });
+                const recipients =
+                    await getAlertRecipientsByMonitorId(monitorId);
+
+                if (createdIncident) {
+                    await sendDependencyDownAlert({
+                        to: recipients,
+                        applicationName:
+                            alertDetails.application_name,
+                        dependencyName:
+                            alertDetails.dependency_name,
+                        monitorName:
+                            alertDetails.monitor_name,
+                        monitorUrl:
+                            alertDetails.monitor_url,
+                        failureReason:
+                            createdIncident.failure_reason,
+                        detectedAt:
+                            createdIncident.detected_at,
+                    });
+                }
+
+                if (resolvedIncident) {
+                    await sendDependencyRecoveredAlert({
+                        to: recipients,
+                        applicationName:
+                            alertDetails.application_name,
+                        dependencyName:
+                            alertDetails.dependency_name,
+                        monitorName:
+                            alertDetails.monitor_name,
+                        monitorUrl:
+                            alertDetails.monitor_url,
+                        startedAt:
+                            resolvedIncident.started_at,
+                        resolvedAt:
+                            resolvedIncident.resolved_at,
+                    });
+                }
             }
+        } catch (error) {
+            console.error(
+                `Failed to send alert for monitor ${monitorId}:`,
+                error.message
+            );
 
-            if (resolvedIncident) {
-                await sendDependencyRecoveredAlert({
-                    to: recipients,
-                    applicationName:
-                        alertDetails.application_name,
-                    dependencyName:
-                        alertDetails.dependency_name,
-                    monitorName:
-                        alertDetails.monitor_name,
-                    monitorUrl:
-                        alertDetails.monitor_url,
-                    startedAt:
-                        resolvedIncident.started_at,
-                    resolvedAt:
-                        resolvedIncident.resolved_at,
-                });
-            }
         }
-
         return healthCheckResult.rows[0];
 
     } catch (error) {
