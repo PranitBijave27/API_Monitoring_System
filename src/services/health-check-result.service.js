@@ -12,17 +12,13 @@ const {
 
 const INCIDENT_THRESHOLD = 3;
 
-async function saveHealthCheckResult(monitorId, result) {
-    const client = await pool.connect();
-
-    try {
-        await client.query("BEGIN");
-        const checkedAt = new Date();
-        let createdIncident = null;
-        let resolvedIncident = null;
-
-        const insertHealthCheckQuery = `
-            INSERT INTO health_checks (
+// inserts a single health check row and returns it
+async function insertHealthCheck(
+    client, monitorId,
+    result, checkedAt
+) {
+    const query = `
+        INSERT INTO health_checks (
             monitor_id,
             status,
             status_code,
@@ -31,181 +27,288 @@ async function saveHealthCheckResult(monitorId, result) {
             checked_at
         )
         VALUES ($1, $2, $3, $4, $5, $6)
-        RETURNING *`;
+        RETURNING * `;
 
-        const healthCheckResult = await client.query(
-            insertHealthCheckQuery,
-            [
-                monitorId,
-                result.status,
-                result.statusCode,
-                result.responseTime,
-                result.errorType,
-                checkedAt,
-            ]);
-
-        const monitorResult = await client.query(`
-            SELECT
-                current_status,
-                consecutive_failures,
-                failure_started_at
-            FROM monitors
-            WHERE id = $1
-            FOR UPDATE`,
-            [monitorId]
-        );
-
-        const monitor = monitorResult.rows[0];
-
-        if (!monitor) {
-            throw new Error("Monitor not found");
-        }
-
-        let consecutiveFailures;
-        let currentStatus;
-        let failureStartedAt;
-
-        if (result.status === "UP") {
-            consecutiveFailures = 0;
-            currentStatus = "UP";
-            failureStartedAt = null;
-        } else {
-            consecutiveFailures = monitor.consecutive_failures + 1;
-            failureStartedAt =
-                monitor.consecutive_failures === 0
-                    ? checkedAt
-                    : monitor.failure_started_at;
-
-            currentStatus =
-                consecutiveFailures >= INCIDENT_THRESHOLD
-                    ? "DOWN"
-                    : monitor.current_status;
-        }
-
-        await client.query(`
-            UPDATE monitors
-                SET
-                    consecutive_failures = $1,
-                    failure_started_at = $2,
-                    current_status = $3,
-                    last_checked_at = $4,
-                    updated_at = CURRENT_TIMESTAMP
-                WHERE id = $5`, [
-            consecutiveFailures,
-            failureStartedAt,
-            currentStatus,
-            checkedAt,
+    const healthCheckResult =
+        await client.query(query, [
             monitorId,
+            result.status,
+            result.statusCode,
+            result.responseTime,
+            result.errorType,
+            checkedAt,
         ]);
 
-        if (result.status === "UP") {
-            const resolvedIncidentResult = await client.query(`
-                UPDATE incidents
-                SET
-                    status = 'RESOLVED',
-                    resolved_at = $1
-                    WHERE monitor_id = $2
-                    AND status = 'OPEN'
-                RETURNING *`,
-                [checkedAt, monitorId]
-            );
+    return healthCheckResult.rows[0];
+}
 
-            if (resolvedIncidentResult.rowCount > 0) {
-                resolvedIncident =
-                    resolvedIncidentResult.rows[0];
+// locks the monitor row so concurrent checks can't race on consecutive_failures
+async function getMonitorForUpdate(client, monitorId) {
+    const result = await client.query(`
+        SELECT
+            current_status,
+            consecutive_failures,
+            failure_started_at
+        FROM monitors
+        WHERE id = $1
+        FOR UPDATE`,
+        [monitorId]
+    );
+
+    const monitor = result.rows[0];
+
+    if (!monitor) {
+        throw new Error("Monitor not found");
+    }
+
+    return monitor;
+}
+
+// figures out the monitor's new failure streak/status based on this latest result
+function calculateMonitorState(
+    monitor, result, checkedAt
+) {
+    if (result.status === "UP") {
+        return {
+            consecutiveFailures: 0,
+            currentStatus: "UP",
+            failureStartedAt: null,
+        };
+    }
+
+    const consecutiveFailures =
+        monitor.consecutive_failures + 1;
+
+    const failureStartedAt =
+        monitor.consecutive_failures === 0
+            ? checkedAt
+            : monitor.failure_started_at;
+
+    const currentStatus =
+        consecutiveFailures >= INCIDENT_THRESHOLD
+            ? "DOWN"
+            : monitor.current_status;
+
+    return {
+        consecutiveFailures,
+        currentStatus,
+        failureStartedAt,
+    };
+}
+
+// persists the freshly calculated monitor state back to the DB
+async function updateMonitorState(
+    client, monitorId,
+    monitorState, checkedAt
+) {
+    await client.query(`
+        UPDATE monitors
+        SET
+            consecutive_failures = $1,
+            failure_started_at = $2,
+            current_status = $3,
+            last_checked_at = $4,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id = $5 `,
+        [
+            monitorState.consecutiveFailures,
+            monitorState.failureStartedAt,
+            monitorState.currentStatus,
+            checkedAt, monitorId,
+        ]
+    );
+}
+
+// closes out the open incident for this monitor if the check just came back UP
+async function resolveOpenIncident(
+    client, monitorId,
+    result, checkedAt
+) {
+    if (result.status !== "UP") {
+        return null;
+    }
+
+    const resolvedIncidentResult =
+        await client.query(`
+            UPDATE incidents
+            SET
+                status = 'RESOLVED',
+                resolved_at = $1
+            WHERE monitor_id = $2
+            AND status = 'OPEN'
+            RETURNING * `,
+            [checkedAt, monitorId,]
+        );
+
+    if (resolvedIncidentResult.rowCount === 0) {
+        return null;
+    }
+
+    const resolvedIncident = resolvedIncidentResult.rows[0];
+
+    console.log(`Incident resolved for monitor ${monitorId}`);
+    return resolvedIncident;
+}
+
+// opens a new incident the moment the failure streak crosses the threshold, not before
+async function createIncidentIfThresholdReached(
+    client, monitorId, monitor,
+    monitorState, result, checkedAt
+) {
+    const thresholdJustReached =
+        result.status === "DOWN" &&
+        monitor.consecutive_failures < INCIDENT_THRESHOLD &&
+        monitorState.consecutiveFailures >=
+        INCIDENT_THRESHOLD;
+
+    if (!thresholdJustReached) return null;
 
 
-                console.log(
-                    `Incident resolved for monitor ${monitorId}`
-                );
-            }
-        }
-
-        const thresholdJustReached =
-            result.status === "DOWN" &&
-            monitor.consecutive_failures < INCIDENT_THRESHOLD &&
-            consecutiveFailures >= INCIDENT_THRESHOLD;
-
-        if (thresholdJustReached) {
-            const createdIncidentResult = await client.query(`
-                INSERT INTO incidents (
-                    monitor_id,
-                    status,
-                    started_at,
-                    detected_at,
-                    failure_reason)
-                    VALUES ($1, 'OPEN', $2, $3, $4)
-                    RETURNING *
-                `, [
-                monitorId,
-                failureStartedAt,
-                checkedAt,
-                result.errorType,
+    const createdIncidentResult =
+        await client.query(`
+            INSERT INTO incidents (
+                monitor_id,
+                status,
+                started_at,
+                detected_at,
+                failure_reason
+            )
+            VALUES ($1, 'OPEN', $2, $3, $4)
+            RETURNING *`,
+            [monitorId, monitorState.failureStartedAt,
+                checkedAt, result.errorType,
             ]
-            );
-            createdIncident =
-                createdIncidentResult.rows[0];
+        );
 
-            console.log(
-                `Incident created for monitor ${monitorId}`
+    const createdIncident = createdIncidentResult.rows[0];
+
+    console.log(`Incident created for monitor ${monitorId}`);
+    return createdIncident;
+}
+
+// sends the DOWN/RECOVERED emails after everything's committed, and never lets a failure here bubble up 
+async function sendIncidentNotifications({
+    monitorId, createdIncident, resolvedIncident,
+}) {
+    if (!createdIncident && !resolvedIncident) return;
+
+    try {
+        const alertDetails =
+            await getAlertDetailsByMonitorId(
+                monitorId
             );
+
+        const recipients =
+            await getAlertRecipientsByMonitorId(
+                monitorId
+            );
+
+        if (recipients.length === 0) {
+            console.log(
+                `No ADMIN alert recipients found for monitor ${monitorId}`
+            );
+            return;
         }
+
+        if (createdIncident) {
+            await sendDependencyDownAlert({
+                to: recipients,
+                applicationName:
+                    alertDetails.application_name,
+                dependencyName:
+                    alertDetails.dependency_name,
+                monitorName:
+                    alertDetails.monitor_name,
+                monitorUrl:
+                    alertDetails.monitor_url,
+                failureReason:
+                    createdIncident.failure_reason,
+                detectedAt:
+                    createdIncident.detected_at,
+            });
+        }
+
+        if (resolvedIncident) {
+            await sendDependencyRecoveredAlert({
+                to: recipients,
+                applicationName:
+                    alertDetails.application_name,
+                dependencyName:
+                    alertDetails.dependency_name,
+                monitorName:
+                    alertDetails.monitor_name,
+                monitorUrl:
+                    alertDetails.monitor_url,
+                startedAt:
+                    resolvedIncident.started_at,
+                resolvedAt:
+                    resolvedIncident.resolved_at,
+            });
+        }
+    } catch (error) {
+        console.error(`Failed to send alert for monitor ${monitorId}:`,
+            error.message
+        );
+    }
+}
+
+// runs one health check result through the whole pipeline: save it, update monitor state, handle incidents, alert
+async function saveHealthCheckResult(monitorId, result) {
+    const client = await pool.connect();
+
+    try {
+        await client.query("BEGIN");
+        const checkedAt = new Date();
+
+        const healthCheck =
+            await insertHealthCheck(
+                client, monitorId,
+                result, checkedAt
+            );
+
+        const monitor =
+            await getMonitorForUpdate(
+                client, monitorId
+            );
+
+        const monitorState =
+            calculateMonitorState(
+                monitor,
+                result,
+                checkedAt
+            );
+
+        await updateMonitorState(
+            client,
+            monitorId,
+            monitorState,
+            checkedAt
+        );
+        const resolvedIncident =
+            await resolveOpenIncident(
+                client,
+                monitorId,
+                result,
+                checkedAt
+            );
+
+        const createdIncident =
+            await createIncidentIfThresholdReached(
+                client,
+                monitorId,
+                monitor,
+                monitorState,
+                result,
+                checkedAt
+            );
 
         await client.query("COMMIT");
-
-
-        try {
-            if (createdIncident || resolvedIncident) {
-                const alertDetails =
-                    await getAlertDetailsByMonitorId(monitorId);
-
-                const recipients =
-                    await getAlertRecipientsByMonitorId(monitorId);
-
-                if (createdIncident) {
-                    await sendDependencyDownAlert({
-                        to: recipients,
-                        applicationName:
-                            alertDetails.application_name,
-                        dependencyName:
-                            alertDetails.dependency_name,
-                        monitorName:
-                            alertDetails.monitor_name,
-                        monitorUrl:
-                            alertDetails.monitor_url,
-                        failureReason:
-                            createdIncident.failure_reason,
-                        detectedAt:
-                            createdIncident.detected_at,
-                    });
-                }
-
-                if (resolvedIncident) {
-                    await sendDependencyRecoveredAlert({
-                        to: recipients,
-                        applicationName:
-                            alertDetails.application_name,
-                        dependencyName:
-                            alertDetails.dependency_name,
-                        monitorName:
-                            alertDetails.monitor_name,
-                        monitorUrl:
-                            alertDetails.monitor_url,
-                        startedAt:
-                            resolvedIncident.started_at,
-                        resolvedAt:
-                            resolvedIncident.resolved_at,
-                    });
-                }
-            }
-        } catch (error) {
-            console.error(
-                `Failed to send alert for monitor ${monitorId}:`,
-                error.message
-            );
-
-        }
-        return healthCheckResult.rows[0];
+        await sendIncidentNotifications({
+            monitorId,
+            createdIncident,
+            resolvedIncident,
+        });
+        return healthCheck;
 
     } catch (error) {
         await client.query("ROLLBACK");
