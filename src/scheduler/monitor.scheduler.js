@@ -3,9 +3,17 @@ const monitorService = require("../services/monitor.service");
 const { performHealthCheck, } = require("../services/health-check.service");
 const { saveHealthCheckResult, } = require("../services/health-check-result.service");
 
+let isSchedulerRunning = false;
 
 function startMonitorScheduler() {
     cron.schedule("* * * * *", async () => {
+        if (isSchedulerRunning) {
+            console.log(
+                "Previous scheduler run is still running. Skipping this cycle."
+            );
+            return;
+        }
+        isSchedulerRunning = true;
         try {
             console.log("\nScheduler running...");
 
@@ -27,6 +35,8 @@ function startMonitorScheduler() {
             }
         } catch (error) {
             console.error("Scheduler error:", error.message);
+        } finally {
+            isSchedulerRunning = false;
         }
     });
 
