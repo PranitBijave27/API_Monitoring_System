@@ -12,6 +12,12 @@ const {
 
 const INCIDENT_THRESHOLD = 3;
 
+const RANGE_TO_INTERVAL = {
+    "1h": "1 hour",
+    "24h": "24 hours",
+    "7d": "7 days",
+    "30d": "30 days",
+};
 // inserts a single health check row and returns it
 async function insertHealthCheck(
     client, monitorId,
@@ -377,7 +383,73 @@ async function getHealthChecksByMonitorId(
     };
 }
 
+//verifies is monitor belongs to same organization for getMonitorStats function
+async function verifyMonitorAccess(
+    monitorId,
+    organizationId
+) {
+    const query = `
+        SELECT m.id
+        FROM monitors m
+        JOIN dependencies d
+            ON m.dependency_id = d.id
+        JOIN applications a
+            ON d.application_id = a.id
+        WHERE m.id = $1
+          AND a.organization_id = $2`;
+
+    const result = await pool.query(
+        query,
+        [monitorId, organizationId]
+    );
+    if (result.rows.length === 0) return false;
+    return true;
+}
+async function getMonitorStats(monitorId, organizationId, range) {
+    const interval = RANGE_TO_INTERVAL[range]
+
+    const hasAccess =
+        await verifyMonitorAccess(monitorId, organizationId);
+
+    if (!hasAccess) return null;
+
+    const query = `
+        SELECT
+            COUNT(*) AS total_checks,
+            COUNT(*) FILTER (
+                WHERE status = 'UP'
+            ) AS successful_checks,
+            COUNT(*) FILTER (
+                WHERE status = 'DOWN'
+            ) AS failed_checks,
+            ROUND(
+                (COUNT(*) FILTER (
+                    WHERE status = 'UP'
+                )::numeric
+                / NULLIF(COUNT(*), 0)
+                ) * 100,2
+            ) AS uptime_percentage,
+            ROUND(
+                AVG(response_time_ms)
+            ) AS average_response_time,
+
+            MIN(response_time_ms) AS min_response_time,
+            MAX(response_time_ms) AS max_response_time
+
+        FROM health_checks hc
+        WHERE monitor_id = $1
+          AND hc.checked_at >= NOW() - $2::INTERVAL
+          AND hc.checked_at <=NOW()`;
+
+
+    const result = await pool.query(query, [
+        monitorId, interval
+    ]);
+    return result.rows[0];
+}
+
 module.exports = {
     saveHealthCheckResult,
     getHealthChecksByMonitorId,
+    getMonitorStats,
 };

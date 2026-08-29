@@ -1,5 +1,5 @@
 const express = require("express");
-const { getHealthCheckHistory, } = require("../controllers/health-check.controller");
+const { getHealthCheckHistory,getMonitorStatsController } = require("../controllers/health-check.controller");
 const { authenticate, } = require("../middleware/auth.middleware");
 const router = express.Router({ mergeParams: true });
 
@@ -8,6 +8,10 @@ router.get(
     authenticate,
     getHealthCheckHistory
 );
-
+router.get(
+    "/monitors/:monitorId/stats",
+    authenticate,
+    getMonitorStatsController    
+);
 
 module.exports = router;
