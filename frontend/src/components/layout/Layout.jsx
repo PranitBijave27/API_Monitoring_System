@@ -1,14 +1,17 @@
-import Sidebar from "./Sidebar";
-import Header from './Header';
+import Sidebar from './Sidebar'
+import Header from './Header'
+import { Outlet } from 'react-router-dom'
 
 function Layout({ children }) {
     return (
-        <div>
+        <div className="app-layout">
             <Sidebar />
-            <div>
+
+            <div className="main-area">
                 <Header />
-                <main>
-                    {children}
+
+                <main className="page-content">
+                     <Outlet />
                 </main>
             </div>
         </div>
