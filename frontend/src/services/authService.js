@@ -12,13 +12,13 @@ export async function loginUser(email, password) {
         }),
     })
 
-    const data = await response.json()
+    const result  = await response.json()
 
     if (!response.ok) {
-        throw new Error(data.message || 'Login failed')
+        throw new Error(result.message || 'Login failed')
     }
 
-    return data
+    return result.data
 }
 
 export async function registerUser(
