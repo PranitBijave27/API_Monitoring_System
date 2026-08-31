@@ -19,7 +19,7 @@ function Login() {
             const data = await loginUser(email, password)
             localStorage.setItem('token', data.token)
             localStorage.setItem('user', JSON.stringify(data.user))
-            
+
             navigate('/dashboard')
         } catch (error) {
             setError(error.message)
@@ -64,6 +64,15 @@ function Login() {
                         {loading ? 'Logging in...' : 'Login'}
                     </button>
                 </form>
+                <p>
+                    Don't have an account?{' '}
+                    <button
+                        type="button"
+                        onClick={() => navigate('/register')}
+                    >
+                        Register
+                    </button>
+                </p>
             </div>
         </div>
     )
