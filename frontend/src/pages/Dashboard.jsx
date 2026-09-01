@@ -1,52 +1,130 @@
+import { useEffect, useState } from 'react'
+
+import StatCard from '../components/dashboard/StatCard'
+import ApplicationHealthCard from '../components/dashboard/ApplicationHealthCard'
+
+import {
+  getApplications,
+  getApplicationOverview,
+} from '../services/applicationService'
+
 function Dashboard() {
-    return (
-        <div className="dashboard">
-            <div className="page-header">
-                <div>
-                    <h2>Dashboard</h2>
-                    <p>
-                        Monitor the health of your applications and dependencies.
-                    </p>
-                </div>
-            </div>
+  const [applications, setApplications] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
 
-            <section className="summary-grid">
-                <div className="summary-card">
-                    <span>Applications</span>
-                    <strong>0</strong>
-                </div>
+  useEffect(() => {
+    async function loadDashboard() {
+      try {
+        const token = localStorage.getItem('token')
 
-                <div className="summary-card">
-                    <span>Healthy</span>
-                    <strong>0</strong>
-                </div>
+        const applicationsResponse = await getApplications(token)
 
-                <div className="summary-card">
-                    <span>Active Incidents</span>
-                    <strong>0</strong>
-                </div>
-            </section>
+        const dashboardApplications = await Promise.all(
+          applicationsResponse.data.map(async (application) => {
+            const overview = await getApplicationOverview(
+              application.id,
+              token
+            )
 
-            <section className="applications-section">
-                <div className="section-header">
-                    <h3>Applications</h3>
-                </div>
+            const overviewApplication = overview.application
 
-                <div className="application-list">
-                    <div className="application-card">
-                        <div>
-                            <h4>Example Application</h4>
-                            <p>Application description</p>
-                        </div>
+            const totalMonitors =
+              overviewApplication.dependencies.reduce(
+                (total, dependency) =>
+                  total + dependency.monitors.length,
+                0
+              )
 
-                        <span className="status-badge">
-                            HEALTHY
-                        </span>
-                    </div>
-                </div>
-            </section>
+            return {
+              id: application.id,
+              name: application.name,
+              description: application.description,
+              status: overviewApplication.status,
+              dependencies:
+                overviewApplication.summary.total_dependencies,
+              monitors: totalMonitors,
+            }
+          })
+        )
+
+        setApplications(dashboardApplications)
+      } catch (error) {
+        setError(error.message)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadDashboard()
+  }, [])
+
+  const totalApplications = applications.length
+
+  const healthyApplications = applications.filter(
+    (application) => application.status === 'UP'
+  ).length
+
+  // We will connect this to the incidents API later
+  const activeIncidents = 0
+
+  if (loading) {
+    return <p>Loading dashboard...</p>
+  }
+
+  if (error) {
+    return <p>{error}</p>
+  }
+
+  return (
+    <div className="dashboard">
+      <div className="page-header">
+        <div>
+          <h2>Dashboard</h2>
+
+          <p>
+            Monitor the health of your applications and dependencies.
+          </p>
         </div>
-    )
+      </div>
+
+      <section className="summary-grid">
+        <StatCard
+          title="Applications"
+          value={totalApplications}
+        />
+
+        <StatCard
+          title="Healthy"
+          value={healthyApplications}
+        />
+
+        <StatCard
+          title="Active Incidents"
+          value={activeIncidents}
+        />
+      </section>
+
+      <section className="applications-section">
+        <div className="section-header">
+          <h3>Applications</h3>
+        </div>
+
+        <div className="application-list">
+          {applications.map((application) => (
+            <ApplicationHealthCard
+              key={application.id}
+              name={application.name}
+              description={application.description}
+              status={application.status}
+              dependencies={application.dependencies}
+              monitors={application.monitors}
+            />
+          ))}
+        </div>
+      </section>
+    </div>
+  )
 }
 
 export default Dashboard
