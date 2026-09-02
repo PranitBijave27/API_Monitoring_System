@@ -3,6 +3,11 @@ const dependencyService = require("../services/dependency.service");
 const asyncHandler = require("../utils/async-handler");
 const AppError = require("../utils/app-error");
 
+const ALLOWED_DEPENDENCY_TYPES = [
+    "EXTERNAL_API",
+    "INTERNAL_SERVICE",
+    "THIRD_PARTY",
+];
 
 const createDependency = asyncHandler(
     async (req, res) => {
@@ -11,6 +16,13 @@ const createDependency = asyncHandler(
 
         if (!name || !type) {
             throw new AppError("Name and type are required", 400);
+        }
+
+        if(! ALLOWED_DEPENDENCY_TYPES.includes(type)){
+            throw new AppError(`
+                Invalid type. Must be one of: ${ALLOWED_DEPENDENCY_TYPES.join(", ")}`,
+                400
+            )
         }
 
         const application =

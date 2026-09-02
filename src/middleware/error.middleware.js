@@ -22,7 +22,11 @@ function errorHandler(err, req, res, next) {
             message: "A record with this value already exists",
         });
     }
-
+    if(err.code ==="23514"){
+        return res.status(400).json({
+            message: "Invalid value provided",
+        });
+    }
     // Invalid login credentials
     if (err.message === "INVALID_CREDENTIALS") {
         return res.status(401).json({
