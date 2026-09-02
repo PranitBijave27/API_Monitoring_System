@@ -216,3 +216,104 @@ body {
 .status-badge.unknown {
   color: #6b7280;
 }
+
+.applications-page {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.applications-page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.create-application-button {
+  background-color: #2563eb;
+  color: #ffffff;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+ 
+
+/* Apply to hover */
+.create-application-button:hover {
+  background-color: #1d4ed8;
+}
+
+.application-search {
+  margin-bottom: 24px;
+}
+
+.application-search input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 14px 16px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 14px;
+  outline: none;
+}
+
+.application-search input:focus {
+  border-color: #9ca3af;
+}
+
+.applications-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.application-card {
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 20px 24px;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.application-card-content h3 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.application-card-description {
+  margin: 10px 0;
+  color: #6b7280;
+}
+
+.application-created-at {
+  margin: 0;
+  font-size: 14px;
+  color: #9ca3af;
+}
+
+.view-details-button {
+  border: none;
+  background: transparent;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+@media (max-width: 768px) {
+  .applications-page-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .application-card {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
