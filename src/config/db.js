@@ -8,6 +8,7 @@ const pool = new Pool({
     password: process.env.DB_PASSWORD,
 });
 
+//prevents an idle client error crash
 pool.on("error", (err, client) => {
     console.error("Unexpected error on idle database client:", err);
 });
