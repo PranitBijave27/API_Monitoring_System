@@ -19,8 +19,8 @@ const createDependency = asyncHandler(
         }
 
         if(! ALLOWED_DEPENDENCY_TYPES.includes(type)){
-            throw new AppError(`
-                Invalid type. Must be one of: ${ALLOWED_DEPENDENCY_TYPES.join(", ")}`,
+            throw new AppError(
+                `Invalid type. Must be one of: ${ALLOWED_DEPENDENCY_TYPES.join(", ")}`,
                 400
             )
         }

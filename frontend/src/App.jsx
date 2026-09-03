@@ -8,7 +8,7 @@ import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
 import Applications from './pages/Applications'
 import Incidents from './pages/Incidents'
-
+import ApplicationDetails from './pages/ApplicationDetails'
 
 
 function App() {
@@ -21,6 +21,10 @@ function App() {
                     <Route element={<Layout />}>
                         <Route path="/dashboard" element={<Dashboard />} />
                         <Route path="/applications" element={<Applications />} />
+                        <Route
+                            path="/applications/:applicationId"
+                            element={<ApplicationDetails />}
+                        />
                         <Route path="/incidents" element={<Incidents />} />
                     </Route>
                 </Route>

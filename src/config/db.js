@@ -8,4 +8,7 @@ const pool = new Pool({
     password: process.env.DB_PASSWORD,
 });
 
+pool.on("error", (err, client) => {
+    console.error("Unexpected error on idle database client:", err);
+});
 module.exports = pool;
