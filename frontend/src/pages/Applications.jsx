@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { getApplications } from '../services/applicationService'
+import { getApplications, getApplicationOverview } from '../services/applicationService'
 
 function Applications() {
 	const navigate = useNavigate()
@@ -14,10 +14,22 @@ function Applications() {
 		async function loadApplications() {
 			try {
 				const token = localStorage.getItem('token')
-
 				const response = await getApplications(token)
 
-				setApplications(response.data)
+				const applicationsWithStatus = await Promise.all(
+					response.data.map(async (application) => {
+						const overview = await getApplicationOverview(
+							application.id,
+							token
+						)
+						return {
+							...application,
+							status: overview.application.status,
+						}
+					})
+				)
+
+				setApplications(applicationsWithStatus)
 			} catch (error) {
 				setError(error.message)
 			} finally {
@@ -71,12 +83,18 @@ function Applications() {
 						className="application-card"
 					>
 						<div className="application-card-content">
-							<h3>{application.name}</h3>
+							<div className="application-card-header">
+								<h3>{application.name}</h3>
+								<span
+									className={`status-badge ${application.status.toLowerCase()}`}
+								>
+									● {application.status}
+								</span>
+							</div>
 
 							<p className="application-card-description">
 								{application.description}
 							</p>
-
 							<p className="application-created-at">
 								Created: {new Date(application.created_at).toLocaleDateString()}
 							</p>

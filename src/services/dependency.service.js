@@ -1,4 +1,6 @@
 const pool = require("../config/db");
+const { calculateApplicationStatus ,calculateDependencyStatus} = require("./application.service");
+const { getMonitorsByDependencyId } = require("./monitor.service");
 
 async function createDependency(applicationId, name, type, provider) {
     const query = `
@@ -34,7 +36,23 @@ async function getDependenciesByApplicationId(applicationId) {
 
     const result = await pool.query(query, [applicationId]);
 
-    return result.rows;
+    const dependencies = await Promise.all(
+        result.rows.map(async (dependency) => {
+            const monitors =
+                await getMonitorsByDependencyId(
+                    dependency.id
+                );
+
+            const status = calculateDependencyStatus(monitors);
+
+            return {
+                ...dependency,
+                status,
+            };
+        })
+    );
+
+    return dependencies;
 }
 
 async function getDependencyById(

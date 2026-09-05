@@ -239,7 +239,7 @@ body {
   cursor: pointer;
   transition: background-color 0.2s ease;
 }
- 
+
 
 /* Apply to hover */
 .create-application-button:hover {
@@ -306,6 +306,7 @@ body {
   cursor: pointer;
   white-space: nowrap;
 }
+
 @media (max-width: 768px) {
   .applications-page-header {
     align-items: flex-start;
@@ -317,6 +318,7 @@ body {
     flex-direction: column;
   }
 }
+
 /* Application details page styling */
 
 .application-details-page {
@@ -340,6 +342,12 @@ body {
   gap: 24px;
 
   margin-bottom: 40px;
+}
+
+.application-card-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
 .application-details-header h2 {
@@ -425,6 +433,7 @@ body {
   font-size: 12px;
   color: #dc2626;
 }
+
 @media (max-width: 768px) {
   .application-details-header {
     align-items: flex-start;
@@ -443,5 +452,107 @@ body {
 
   .monitor-status {
     align-items: flex-start;
+  }
+}
+
+/* dependencies */
+.dependency-provider {
+  margin: 6px 0 0;
+  font-size: 14px;
+  color: #6b7280;
+}
+
+.dependency-type {
+  font-size: 12px;
+  font-weight: 600;
+  color: #6b7280;
+}
+
+.dependency-card .view-details-button {
+  margin-top: 20px;
+}
+
+.dependency-meta {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+@media (max-width: 768px) {
+  .dependency-meta {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 8px;
+  }
+}
+
+/* monitor styling */
+.dependency-details-page {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.dependency-details-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+
+  margin-bottom: 40px;
+}
+
+.dependency-details-header h2 {
+  margin: 0;
+  font-size: 28px;
+}
+
+.monitors-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.monitor-card {
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 24px;
+}
+
+.monitor-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.monitor-card-header h4 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.monitor-last-checked {
+  margin: 8px 0 0;
+  font-size: 13px;
+  color: #6b7280;
+}
+
+.monitor-details {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid #f3f4f6;
+
+  font-size: 14px;
+  color: #6b7280;
+}
+@media (max-width: 768px) {
+  .dependency-details-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .monitor-card-header {
+    align-items: flex-start;
+    flex-direction: column;
   }
 }

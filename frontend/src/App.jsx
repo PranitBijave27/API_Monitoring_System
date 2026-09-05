@@ -9,7 +9,7 @@ import Dashboard from './pages/Dashboard'
 import Applications from './pages/Applications'
 import Incidents from './pages/Incidents'
 import ApplicationDetails from './pages/ApplicationDetails'
-
+import DependencyDetails from './pages/DependencyDetails'
 
 function App() {
     return (
@@ -24,6 +24,10 @@ function App() {
                         <Route
                             path="/applications/:applicationId"
                             element={<ApplicationDetails />}
+                        />
+                        <Route
+                            path="/applications/:applicationId/dependencies/:dependencyId"
+                            element={<DependencyDetails />}
                         />
                         <Route path="/incidents" element={<Incidents />} />
                     </Route>

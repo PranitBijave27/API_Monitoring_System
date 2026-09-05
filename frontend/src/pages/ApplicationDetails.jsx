@@ -1,26 +1,34 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { getApplicationOverview } from '../services/applicationService'
+
+import {
+    getApplicationOverview,
+    getApplicationDependencies,
+} from '../services/applicationService'
 
 function ApplicationDetails() {
     const { applicationId } = useParams()
     const navigate = useNavigate()
 
     const [application, setApplication] = useState(null)
+    const [dependencies, setDependencies] = useState([])
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState('')
 
     useEffect(() => {
-        async function loadApplicationOverview() {
+        async function loadApplicationDetails() {
             try {
                 const token = localStorage.getItem('token')
 
-                const response = await getApplicationOverview(
-                    applicationId,
-                    token
-                )
+                const [overviewResponse, dependenciesResponse] =
+                    await Promise.all([
+                        getApplicationOverview(applicationId, token),
+                        getApplicationDependencies(applicationId, token),
+                    ])
 
-                setApplication(response.application)
+                setApplication(overviewResponse.application)
+
+                setDependencies(dependenciesResponse.data)
             } catch (error) {
                 setError(error.message)
             } finally {
@@ -28,12 +36,16 @@ function ApplicationDetails() {
             }
         }
 
-        loadApplicationOverview()
+        loadApplicationDetails()
     }, [applicationId])
 
-    if (loading) return <p>Loading application...</p>
+    if (loading) {
+        return <p>Loading application...</p>
+    }
 
-    if (error) return <p>{error}</p>
+    if (error) {
+        return <p>{error}</p>
+    }
 
     return (
         <div className="application-details-page">
@@ -60,65 +72,49 @@ function ApplicationDetails() {
             <section className="dependencies-section">
                 <div className="section-header">
                     <h3>
-                        Dependencies ({application.summary.total_dependencies})
+                        Dependencies ({dependencies.length})
                     </h3>
                 </div>
 
                 <div className="dependencies-list">
-                    {application.dependencies.map((dependency) => (
+                    {dependencies.map((dependency) => (
                         <div
                             key={dependency.id}
                             className="dependency-card"
                         >
                             <div className="dependency-header">
-                                <h4>{dependency.name}</h4>
+                                <div>
+                                    <h4>{dependency.name}</h4>
 
-                                <span
-                                    className={`status-badge ${dependency.status.toLowerCase()}`}
-                                >
-                                    ● {dependency.status}
-                                </span>
-                            </div>
+                                    <p className="dependency-provider">
+                                        {dependency.provider}
+                                    </p>
+                                </div>
 
-                            <div className="monitors-section">
-                                <h5>
-                                    Monitors ({dependency.monitors.length})
-                                </h5>
+                                <div className="dependency-meta">
+                                    <span className="dependency-type">
+                                        {dependency.type}
+                                    </span>
 
-                                {dependency.monitors.map((monitor) => (
-                                    <div
-                                        key={monitor.id}
-                                        className="monitor-row"
+                                    <span
+                                        className={`status-badge ${dependency.status.toLowerCase()}`}
                                     >
-                                        <div>
-                                            <strong>{monitor.name}</strong>
-
-                                            <p>
-                                                Last checked:{' '}
-                                                {monitor.last_checked_at
-                                                    ? new Date(
-                                                        monitor.last_checked_at
-                                                    ).toLocaleString()
-                                                    : 'Never'}
-                                            </p>
-                                        </div>
-
-                                        <div className="monitor-status">
-                                            <span
-                                                className={`status-badge ${monitor.current_status.toLowerCase()}`}
-                                            >
-                                                ● {monitor.current_status}
-                                            </span>
-
-                                            {monitor.consecutive_failures > 0 && (
-                                                <span className="failure-count">
-                                                    {monitor.consecutive_failures} consecutive failures
-                                                </span>
-                                            )}
-                                        </div>
-                                    </div>
-                                ))}
+                                        ● {dependency.status}
+                                    </span>
+                                </div>
                             </div>
+
+                            <button
+                                type="button"
+                                className="view-details-button"
+                                onClick={() =>
+                                    navigate(
+                                        `/applications/${applicationId}/dependencies/${dependency.id}`
+                                    )
+                                }
+                            >
+                                View Monitors →
+                            </button>
                         </div>
                     ))}
                 </div>
